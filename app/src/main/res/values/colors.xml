@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="transparent">#00000000</color>
+    <color name="ripple_color">#1F000000</color>
+
+    <!-- Main color -->
+    <color name="main_primary">#FFA300</color>
+    <color name="main_secondary">#FFC482</color>
+    <color name="main_tertiary">#FFDFBC</color>
+    <color name="main_quaternary">#FFF0E0</color>
+
+    <!-- Foreground Normal color -->
+    <color name="foreground_normal_primary">#FA273C48</color>
+    <color name="foreground_normal_secondary">#A8273C48</color>
+    <color name="foreground_normal_tertiary">#80243742</color>
+    <color name="foreground_normal_quaternary">#54273C48</color>
+    <color name="foreground_normal_disable">#2632393D</color>
+
+    <!-- Foreground Reverse color -->
+    <color name="foreground_reverse_primary">#F2FFFFFF</color>
+    <color name="foreground_reverse_secondary">#A8E6E6E6</color>
+    <color name="foreground_reverse_tertiary">#80E6E6E6</color>
+    <color name="foreground_reverse_quaternary">#54E6E6E6</color>
+    <color name="foreground_reverse_disable">#26E6E6E6</color>
+
+    <!-- Background Normal color -->
+    <color name="background_normal_primary">#FFFFFF</color>
+    <color name="background_normal_secondary">#F5F5F5</color>
+    <color name="background_normal_tertiary">#E9EAEB</color>
+    <color name="background_normal_quaternary">#E4E6E9</color>
+    <color name="background_normal_nature">#F2F3F4</color>
+
+    <!-- Background Reverse color -->
+    <color name="background_reverse_primary">#000000</color>
+    <color name="background_reverse_secondary">#252B2F</color>
+    <color name="background_reverse_tertiary">#2B2F33</color>
+    <color name="background_reverse_quaternary">#323537</color>
+    <color name="background_reverse_nature">#3E4042</color>
+
+    <!-- Transparency Dark color -->
+    <color name="transparency_dark_primary">#BF000000</color>
+    <color name="transparency_dark_secondary">#80000000</color>
+    <color name="transparency_dark_tertiary">#54000000</color>
+
+    <!-- Transparency Light color -->
+    <color name="transparency_light_primary">#BFFFFFFF</color>
+    <color name="transparency_light_secondary">#80FFFFFF</color>
+    <color name="transparency_light_tertiary">#54FFFFFF</color>
+
+    <!-- Outline color -->
+    <color name="outline_primary">#1F000000</color>
+    <color name="outline_secondary">#14000000</color>
+
+    <!-- Normal State color -->
+    <color name="normal_state_succeed_primary">#52D063</color>
+    <color name="normal_state_succeed_secondary">#7AE087</color>
+    <color name="normal_state_warning_primary">#E9B500</color>
+    <color name="normal_state_warning_secondary">#FFCC00</color>
+    <color name="normal_state_danger_primary">#F5462E</color>
+    <color name="normal_state_danger_secondary">#FE705C</color>
+    <color name="normal_state_info_primary">#1868F5</color>
+    <color name="normal_state_info_secondary">#4B8CFE</color>
+
+    <!-- Spaciel State color -->
+    <color name="spaciel_state_info_received_primary">#0E4793</color>
+    <color name="spaciel_state_info_received_secondary">#1254B4</color>
+    <color name="spaciel_state_out_for_delivery_primary">#FFA300</color>
+    <color name="spaciel_state_out_for_delivery_secondary">#FFB14C</color>
+    <color name="spaciel_state_order_related_primary">#5941F1</color>
+    <color name="spaciel_state_order_related_secondary">#7F6BFA</color>
+    <color name="spaciel_state_attempt_primary">#DB2EC2</color>
+    <color name="spaciel_state_attempt_secondary">#E95DD5</color>
+    <color name="spaciel_state_expired">#616E7D</color>
+    <color name="spaciel_state_pending">#CBCBCB</color>
+
+</resources>

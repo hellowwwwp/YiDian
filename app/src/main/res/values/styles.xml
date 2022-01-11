@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.YiDian" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/background_normal_primary</item>
+        <item name="colorPrimaryDark">@color/background_normal_primary</item>
+        <item name="colorAccent">@color/main_primary</item>
+        <item name="android:statusBarColor">@color/background_normal_primary</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- splash theme -->
+    <style name="SplashTheme" parent="@style/Theme.YiDian">
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+
+    <style name="CommonDialogAlert" parent="@style/Theme.AppCompat.Light.Dialog.Alert">
+        <item name="android:windowBackground">@color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+</resources>

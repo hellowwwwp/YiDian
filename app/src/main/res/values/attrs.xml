@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="YiDianVideoView">
+        <attr name="yvv_resizeMode" format="enum">
+            <enum name="fit" value="0" />
+            <enum name="fixed_width" value="1" />
+            <enum name="fixed_height" value="2" />
+            <enum name="fill" value="3" />
+            <enum name="zoom" value="4" />
+        </attr>
+        <attr name="yvv_progressUpdateInterval" format="integer" />
+    </declare-styleable>
+    <declare-styleable name="YiDianControllerView">
+        <attr name="ycv_hideControllerPanelInterval" format="integer" />
+        <attr name="ycv_fastPlaySpeed" format="enum">
+            <enum name="x0.8" value="0" />
+            <enum name="x1.0" value="1" />
+            <enum name="x1.25" value="2" />
+            <enum name="x1.5" value="3" />
+            <enum name="x2.0" value="4" />
+            <enum name="x3.0" value="5" />
+        </attr>
+        <attr name="ycv_fastPlayVibrateDuration" format="integer" />
+    </declare-styleable>
+</resources>
