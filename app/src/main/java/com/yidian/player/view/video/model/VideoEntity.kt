@@ -18,9 +18,10 @@ data class VideoEntity(
     val filePath: String,
     val fileName: String,
     val title: String,
-    val duration: Long = 0,
+    var duration: Long,
     val size: Long,
-    val updateTime: Long
+    val updateTime: Long,
+    var progress: Long = 0
 ) : Parcelable, Comparable<VideoEntity> {
 
     val relativePath: String

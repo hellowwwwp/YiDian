@@ -1,21 +1,23 @@
 package com.yidian.player.view.video.helper
 
-import android.app.Application
+import android.content.Context
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Environment
 import android.util.Log
-import com.blankj.utilcode.util.FileUtils
+import androidx.annotation.WorkerThread
 import com.yidian.player.YiDianApp
-import com.yidian.player.utils.StorageUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.Executors
 
 /**
  * @author: wangpan
  * @email: p.wang@aftership.com
  * @date: 2022/1/9
  */
-object VideoScanHelper : Runnable {
+object VideoScanHelper : MediaScannerConnection.OnScanCompletedListener {
 
     private val VIDEO_EXTENSIONS: List<String> = listOf(
         "mp4", "avi", "3gp", "3g2", "dl", "dif", "dv", "fli", "m4v",
@@ -27,64 +29,94 @@ object VideoScanHelper : Runnable {
     @Volatile
     private var isScanning: Boolean = false
 
-    private val application: Application
-        get() = YiDianApp.application
+    private val context: Context
+        get() = YiDianApp.application.applicationContext
 
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "video_scan_thread")
-    }
+    var onScanCompleted: ((Int) -> Unit)? = null
 
-    private val listeners: MutableList<OnScanCompletedListener> = mutableListOf()
+    /**
+     * 记录当前在列表中显示的视频, 全盘扫描时做过滤用
+     */
+    private val currentVideoPathList: MutableList<String> = mutableListOf()
 
-    fun scanLocalVideos() {
-//        if (isScanning) return
-//        synchronized(this) {
-//            executor.submit(this)
-//            isScanning = true
-//        }
-    }
+    /**
+     * 扫描到的视频文件个数
+     */
+    private var scanFileCount: Int = 0
 
-    fun addOnScanCompletedListener(listener: OnScanCompletedListener) {
-        if (!listeners.contains(listener)) {
-            listeners.add(listener)
-        }
-    }
+    /**
+     * onScanCompleted 回调计数
+     */
+    private var onScanCompletedCount: Int = 0
 
-    fun removeOnScanCompletedListener(listener: OnScanCompletedListener) {
-        listeners.remove(listener)
-    }
-
-    private fun notifyScanCompleted() {
-        listeners.forEach {
-            it.onScanCompleted()
-        }
-    }
-
-    override fun run() {
-        try {
-            val startTime = System.currentTimeMillis()
-            val scanFiles: MutableSet<String> = mutableSetOf()
-            val externalSdCardPath = StorageUtils.getExternalSdCardRoot(application)
-            //扫描外置 SDCard
-            if (!externalSdCardPath.isNullOrEmpty() && StorageUtils.isExternalSdcardMounted(application)) {
-                scanSdCard(File(externalSdCardPath), scanFiles)
+    suspend fun scanVideoFiles(currentVideoPathList: List<String>) {
+        if (isScanning) return
+        isScanning = true
+        //记录当前在列表中显示的视频, 全盘扫描时做过滤用
+        this.currentVideoPathList.clear()
+        this.currentVideoPathList.addAll(currentVideoPathList)
+        //待扫描的视频文件
+        val videoPathList = mutableListOf<String>()
+        withContext(Dispatchers.IO) {
+            //获取手机根目录
+            val rootFile = Environment.getExternalStorageDirectory()
+            //根目录的所有文件夹
+            val primaryFileDirs = mutableListOf<File>()
+            if (rootFile.exists() && rootFile.isDirectory) {
+                rootFile.listFiles()?.forEach {
+                    if (shouldSkipDirectory(it)) {
+                        return@forEach
+                    }
+                    val filePath = it.absolutePath
+                    if (it.isDirectory) {
+                        primaryFileDirs.add(it)
+                    } else if (canAddVideoFile(it)) {
+                        videoPathList.add(filePath)
+                    }
+                }
             }
-            //扫描外置存储
-            scanSdCard(Environment.getExternalStorageDirectory(), scanFiles)
-            val useTime = System.currentTimeMillis() - startTime
-            Log.e("tag", "useTime: $useTime, scanFiles: ${scanFiles.size}")
-            if (scanFiles.isNotEmpty()) {
-                MediaScannerConnection.scanFile(application, scanFiles.toTypedArray(), null, null)
+            primaryFileDirs.map {
+                //每一个根目录的文件夹对应一个 Deferred
+                async { doScanVideoFiles(it, videoPathList) }
+            }.forEach {
+                //所有根目录同时开始扫描, 加快扫描速度
+                it.await()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            notifyScanCompleted()
-            isScanning = false
+        }
+        Log.e("tag", "scanVideoFiles videoPathList: $videoPathList")
+        //扫描文件结束, 准备开始通知媒体库更新
+        scanFileCount = videoPathList.size
+        onScanCompletedCount = scanFileCount
+        if (videoPathList.isNotEmpty()) {
+            MediaScannerConnection.scanFile(
+                context,
+                videoPathList.toTypedArray(),
+                null,
+                this@VideoScanHelper
+            )
+        }
+        //如果扫描到的视频文件数为0则立即回调扫描完成
+        if (scanFileCount == 0) {
+            notifyScanCompleted(0)
         }
     }
 
-    private fun scanSdCard(file: File, scanFiles: MutableSet<String>) {
+    private fun notifyScanCompleted(scanVideoCount: Int) {
+        Log.e("tag", "notifyScanCompleted")
+        isScanning = false
+        onScanCompleted?.invoke(scanVideoCount)
+    }
+
+    override fun onScanCompleted(path: String, uri: Uri?) {
+        Log.d("tag", "onScanCompleted: $path, $uri")
+        onScanCompletedCount--
+        if (onScanCompletedCount == 0) {
+            notifyScanCompleted(scanFileCount)
+        }
+    }
+
+    @WorkerThread
+    private fun doScanVideoFiles(file: File, videoPathList: MutableList<String>) {
         if (!file.exists() || !file.isDirectory) {
             return
         }
@@ -93,50 +125,55 @@ object VideoScanHelper : Runnable {
             return
         }
         files.forEach {
-            if (!it.exists() || it.name.startsWith(".")) {
+            if (shouldSkipDirectory(it)) {
                 return@forEach
             }
-            if (it.isDirectory && !shouldContinueLoop(it.absolutePath)) {
-                scanSdCard(it, scanFiles)
-            } else if (isVideoFile(it)) {
-                scanFiles.add(it.absolutePath)
+            if (it.isDirectory) {
+                doScanVideoFiles(it, videoPathList)
+            } else if (canAddVideoFile(it)) {
+                videoPathList.add(it.absolutePath)
             }
         }
     }
 
-    /**
-     * 判断是否应该跳过循环
-     */
-    private fun shouldContinueLoop(path: String): Boolean {
-        if (path.lowercase().contains("android/data")) {
-            //不扫描 android/data 目录
+    private fun shouldSkipDirectory(file: File): Boolean {
+        if (!file.exists()) {
             return true
         }
-        return if (path.contains("emulated/0/")) {
-            path.split(File.separator).size > 8
-        } else {
-            path.split(File.separator).size > 7
+        //不扫描隐藏目录
+        if (file.name.startsWith(".")) {
+            return true
         }
+        //不扫描 android/data 目录
+        if (file.absolutePath.contains("android/data", true)) {
+            return true
+        }
+        return false
     }
 
     /**
-     * 判断是否是视频文件
+     * 判断是否是能添加指定的视频文件
      */
-    private fun isVideoFile(file: File): Boolean {
-        if (!file.exists() || !file.canRead()) {
+    private fun canAddVideoFile(file: File): Boolean {
+        if (!file.exists() || !file.canRead() || !file.isFile) {
             return false
         }
-        val list = FileUtils.getFileName(file).split(".")
-        if (list.isEmpty()) {
+        val filePath = file.absolutePath ?: ""
+        val fileName = file.name ?: ""
+        if (filePath.isEmpty() || fileName.isEmpty()) {
             return false
         }
-        return VIDEO_EXTENSIONS.contains(list.last())
-    }
-
-    interface OnScanCompletedListener {
-
-        fun onScanCompleted()
-
+        //获取后缀名
+        val fileNameList = fileName.split(".")
+        if (fileNameList.isEmpty()) {
+            return false
+        }
+        //后缀名不是视频文件
+        if (!VIDEO_EXTENSIONS.contains(fileNameList.last())) {
+            return false
+        }
+        //没有在列表中显示
+        return !currentVideoPathList.contains(filePath)
     }
 
 }

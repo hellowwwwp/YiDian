@@ -3,6 +3,9 @@ package com.yidian.player.widget
 import android.animation.Animator
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.ActivityInfo.*
+import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.os.*
 import android.util.AttributeSet
 import android.util.Log
@@ -16,6 +19,7 @@ import androidx.core.view.isVisible
 import com.blankj.utilcode.util.ScreenUtils
 import com.blankj.utilcode.util.SizeUtils
 import com.blankj.utilcode.util.VibrateUtils
+import com.gyf.immersionbar.NotchUtils
 import com.yidian.player.R
 import com.yidian.player.base.*
 import com.yidian.player.databinding.LayoutVideoControllerViewBinding
@@ -26,6 +30,7 @@ import com.yidian.player.view.video.model.VideoEntity
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.max
 
 /**
  * @author: wangpan
@@ -43,9 +48,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
 
     private val topLayout: View
         get() = viewBinding.topLayout
-
-    private val centerLayout: View
-        get() = viewBinding.centerLayout
 
     private val bottomLayout: View
         get() = viewBinding.bottomLayout
@@ -113,6 +115,15 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     private val thumbnailTv: TextView
         get() = viewBinding.thumbnailTv
 
+    private val fullscreenIv: ImageView
+        get() = viewBinding.fullscreenIv
+
+    private val screenLockIv: ImageView
+        get() = viewBinding.screenLockIv
+
+    private val screenShotIv: ImageView
+        get() = viewBinding.screenShotIv
+
     private var currentState: PlayState = PlayState.Idle
 
     private val listeners: MutableList<OnControllerListener> = mutableListOf()
@@ -128,7 +139,8 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     private var selectedVideoSpeed: VideoSpeed = VideoSpeed.SPEED_1_0
 
     private var topLayoutAnimation: ViewPropertyAnimator? = null
-    private var centerLayoutAnimation: ViewPropertyAnimator? = null
+    private var screenLockLayoutAnimation: ViewPropertyAnimator? = null
+    private var screenShotLayoutAnimation: ViewPropertyAnimator? = null
     private var bottomLayoutAnimation: ViewPropertyAnimator? = null
     private var speedLayoutAnimation: ViewPropertyAnimator? = null
 
@@ -148,7 +160,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     /**
      * 控制面板是否显示
      */
-    private var isControllerPanelVisible: Boolean = false
+    private var isControllerLayoutVisible: Boolean = false
 
     /**
      * 自动隐藏控制面板的时间间隔
@@ -160,11 +172,14 @@ class YiDianVideoControllerView @JvmOverloads constructor(
      */
     private val hideControllerPanelRunnable = object : Runnable {
         override fun run() {
-            if (isControllerPanelVisible) {
+            if (isControllerLayoutVisible) {
                 setControllerLayoutVisible(false)
-                //通知隐藏系统栏
-                notifySystemBarVisibleChanged(false)
             }
+            if (isScreenLockLayoutVisible) {
+                setScreenLockLayoutVisible(false)
+            }
+            //通知隐藏系统栏
+            notifySystemBarVisibleChanged(false)
         }
     }
 
@@ -243,10 +258,17 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                     //隐藏倍速面板
                     setSpeedLayoutVisible(false)
                 } else {
-                    //更新控制面板
-                    setControllerLayoutVisible(!isControllerPanelVisible)
-                    //通知系统栏显示和隐藏
-                    notifySystemBarVisibleChanged(isControllerPanelVisible)
+                    if (isScreenLocked) {
+                        setScreenLockLayoutVisible(!isScreenLockLayoutVisible)
+                        //通知系统栏显示和隐藏
+                        notifySystemBarVisibleChanged(isScreenLockLayoutVisible)
+                    } else {
+                        //更新控制面板
+                        setControllerLayoutVisible(!isControllerLayoutVisible)
+                        setScreenLockLayoutVisible(isControllerLayoutVisible)
+                        //通知系统栏显示和隐藏
+                        notifySystemBarVisibleChanged(isControllerLayoutVisible)
+                    }
                 }
                 return true
             }
@@ -263,7 +285,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
             }
 
             override fun onScroll(down: MotionEvent, move: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (distanceX == 0f && distanceY == 0f) {
+                if (isScreenLocked || (distanceX == 0f && distanceY == 0f)) {
                     return true
                 }
                 when (ensureGestureOperation(down, distanceX, distanceY)) {
@@ -302,6 +324,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                     playIv.isSelected = true
                     cancelHideControllerPanel()
                     setControllerLayoutVisible(isVisible = true, animation = false)
+                    setScreenLockLayoutVisible(isVisible = true, animation = false)
                 }
             }
         }
@@ -329,24 +352,72 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     private var shortAdjustDurationTextWidth: Int = 0
     private var longAdjustDurationTextWidth: Int = 0
 
+    private var isScreenLockLayoutVisible: Boolean = false
+
+    private var isScreenLocked: Boolean = false
+        set(value) {
+            field = value
+            screenLockIv.isSelected = value
+            onScreenLockedChanged(value)
+        }
+
+    /**
+     * 当前屏幕方向
+     */
+    private var controllerOrientation: Int = ORIENTATION_PORTRAIT
+
+    /**
+     * 当前屏幕旋转方向
+     */
+    private var currentScreenOrientation: ScreenOrientation = ScreenOrientation.TopPortrait
+
+    /**
+     * 监听屏幕旋转角度
+     */
+    private val orientationEventListener = object : OrientationEventListener(context) {
+        override fun onOrientationChanged(orientation: Int) {
+            if (orientation == ORIENTATION_UNKNOWN) return
+            val screenOrientation = when {
+                orientation > 315 || orientation <= 45 -> {
+                    ScreenOrientation.TopPortrait
+                }
+                orientation in 225..315 -> {
+                    ScreenOrientation.TopLandscape
+                }
+                orientation in 46..134 -> {
+                    ScreenOrientation.BottomLandscape
+                }
+                else -> {
+                    ScreenOrientation.BottomPortrait
+                }
+            }
+            if (currentScreenOrientation != screenOrientation) {
+                currentScreenOrientation = screenOrientation
+                onScreenOrientationChanged(screenOrientation)
+            }
+        }
+    }
+
     init {
-        val ta = context.obtainStyledAttributes(attrs, R.styleable.YiDianControllerView)
+        val ta = context.obtainStyledAttributes(attrs, R.styleable.YiDianVideoControllerView)
         hideControllerPanelInterval = ta.getInt(
-            R.styleable.YiDianControllerView_ycv_hideControllerPanelInterval,
+            R.styleable.YiDianVideoControllerView_ycv_hideControllerPanelInterval,
             3000
         ).toLong()
         val fastPlaySpeedIndex = ta.getInt(
-            R.styleable.YiDianControllerView_ycv_fastPlaySpeed,
+            R.styleable.YiDianVideoControllerView_ycv_fastPlaySpeed,
             VideoSpeed.SPEED_2_0.ordinal
         )
         fastPlayVideoSpeed = VideoSpeed.values()[fastPlaySpeedIndex]
         fastPlayVibrateDuration = ta.getInt(
-            R.styleable.YiDianControllerView_ycv_fastPlayVibrateDuration,
+            R.styleable.YiDianVideoControllerView_ycv_fastPlayVibrateDuration,
             50
         ).toLong()
         ta.recycle()
         initView()
+        setControllerOrientation(context.resources.configuration.orientation)
         setControllerLayoutVisible(isVisible = true, animation = false)
+        setScreenLockLayoutVisible(isVisible = true, animation = false)
         setSpeedLayoutVisible(isVisible = false, animation = false)
         setPreviousAndNext(hasPrevious = false, hasNext = false)
         setAdjustBrightnessLayoutVisible(false)
@@ -354,10 +425,10 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         setAdjustPositionLayoutVisible(false)
         setThumbnailLayoutVisible(false)
         registerOnBackPressedCallback()
+        orientationEventListener.enable()
     }
 
     private fun initView() {
-        initControllerLayoutPadding()
         with(seekBar) {
             setOnSeekBarChangeListener(object : AbsSeekBarChangeListener() {
                 override fun onStartTrackingTouch(seekBar: SeekBar) {
@@ -378,10 +449,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                 }
             }
             screenLockIv.setOnClickListener {
-                screenLockIv.isSelected = !screenLockIv.isSelected
-                listeners.forEach {
-                    it.onScreenLockChanged(this@YiDianVideoControllerView, screenLockIv.isSelected)
-                }
+                isScreenLocked = !isScreenLocked
             }
             screenShotIv.setOnClickListener {
                 listeners.forEach {
@@ -402,10 +470,17 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                 updatePlayState()
             }
             fullscreenIv.setOnClickListener {
-                fullscreenIv.isSelected = !fullscreenIv.isSelected
-                listeners.forEach {
-                    it.onFullScreenChangedClick(this@YiDianVideoControllerView, fullscreenIv.isSelected)
+                val newControllerOrientation: Int
+                val requestOrientation: Int
+                if (controllerOrientation == ORIENTATION_PORTRAIT) {
+                    newControllerOrientation = ORIENTATION_LANDSCAPE
+                    requestOrientation = SCREEN_ORIENTATION_LANDSCAPE
+                } else {
+                    newControllerOrientation = ORIENTATION_PORTRAIT
+                    requestOrientation = SCREEN_ORIENTATION_PORTRAIT
                 }
+                setControllerOrientation(newControllerOrientation)
+                requestOrientation(requestOrientation)
             }
             speedTv.setOnClickListener {
                 setSpeedLayoutVisible(true)
@@ -447,39 +522,93 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         }
     }
 
-    private fun initControllerLayoutPadding() {
+    private fun updateControllerLayoutPadding() {
+        Log.e("tag", "updateControllerLayoutPadding: $controllerOrientation")
+        if (controllerOrientation == ORIENTATION_PORTRAIT) {
+            //竖屏
+            val statusBarHeight = DeviceUtils.getStatusBarHeight()
+            val navigationBarHeight = DeviceUtils.getNavigationBarHeight()
+            setPadding(0, 0, 0, 0)
+            val topLayoutPaddingTop = if (statusBarHeight == 0) {
+                SizeUtils.dp2px(40f)
+            } else {
+                statusBarHeight
+            }
+            topLayout.setPadding(
+                topLayout.paddingLeft,
+                topLayoutPaddingTop,
+                topLayout.paddingRight,
+                topLayout.paddingBottom
+            )
+            val bottomLayoutPaddingBottom = if (navigationBarHeight == 0) {
+                SizeUtils.dp2px(10f)
+            } else {
+                navigationBarHeight + SizeUtils.dp2px(10f)
+            }
+            bottomLayout.setPadding(
+                bottomLayout.paddingLeft,
+                bottomLayout.paddingTop,
+                bottomLayout.paddingRight,
+                bottomLayoutPaddingBottom
+            )
+            speedLayout.setPadding(
+                speedLayout.paddingLeft,
+                speedLayout.paddingTop,
+                speedLayout.paddingRight,
+                bottomLayoutPaddingBottom
+            )
+        } else {
+            //横屏
+            val notchHeight = getNotchHeight()
+            val statusBarHeight = DeviceUtils.getStatusBarHeight()
+            val navigationBarHeight = DeviceUtils.getNavigationBarHeight()
+            val contentPaddingLeft: Int
+            val contentPaddingRight: Int
+            if (currentScreenOrientation.isTop) {
+                //横屏, 状态栏在左边
+                contentPaddingLeft = max(notchHeight, statusBarHeight)
+                contentPaddingRight = navigationBarHeight
+            } else {
+                //横屏, 状态栏在右边
+                contentPaddingLeft = navigationBarHeight
+                contentPaddingRight = max(notchHeight, statusBarHeight)
+            }
+            setPadding(contentPaddingLeft, 0, contentPaddingRight, 0)
+            val topLayoutPaddingTop = if (statusBarHeight == 0) {
+                SizeUtils.dp2px(40f)
+            } else {
+                statusBarHeight
+            }
+            topLayout.setPadding(
+                topLayout.paddingLeft,
+                topLayoutPaddingTop,
+                topLayout.paddingRight,
+                topLayout.paddingBottom
+            )
+            val bottomLayoutPaddingBottom = SizeUtils.dp2px(10f)
+            bottomLayout.setPadding(
+                bottomLayout.paddingLeft,
+                bottomLayout.paddingTop,
+                bottomLayout.paddingRight,
+                bottomLayoutPaddingBottom
+            )
+            speedLayout.setPadding(
+                speedLayout.paddingLeft,
+                speedLayout.paddingTop,
+                speedLayout.paddingRight,
+                bottomLayoutPaddingBottom
+            )
+        }
+    }
+
+    private fun getNotchHeight(): Int {
         val statusBarHeight = DeviceUtils.getStatusBarHeight()
-        Log.d("tag", "statusBarHeight: $statusBarHeight")
-        val topLayoutPaddingTop = if (statusBarHeight == 0) {
-            SizeUtils.dp2px(40f)
-        } else {
-            statusBarHeight
+        val activity = ActivityUtils.getActivity(context)
+        if (activity != null) {
+            val notchHeight = NotchUtils.getNotchHeight(activity)
+            return max(statusBarHeight, notchHeight)
         }
-        topLayout.setPadding(
-            topLayout.paddingLeft,
-            topLayoutPaddingTop,
-            topLayout.paddingRight,
-            topLayout.paddingBottom
-        )
-        val navigationBarHeight = DeviceUtils.getNavigationBarHeight()
-        Log.d("tag", "navigationBarHeight: $navigationBarHeight")
-        val bottomLayoutPaddingBottom = if (navigationBarHeight == 0) {
-            SizeUtils.dp2px(10f)
-        } else {
-            navigationBarHeight + SizeUtils.dp2px(10f)
-        }
-        bottomLayout.setPadding(
-            bottomLayout.paddingLeft,
-            bottomLayout.paddingTop,
-            bottomLayout.paddingRight,
-            bottomLayoutPaddingBottom
-        )
-        speedLayout.setPadding(
-            speedLayout.paddingLeft,
-            speedLayout.paddingTop,
-            speedLayout.paddingRight,
-            bottomLayoutPaddingBottom
-        )
+        return statusBarHeight
     }
 
     private fun registerOnBackPressedCallback() {
@@ -647,22 +776,54 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         }
     }
 
+    private fun setScreenLockLayoutVisible(isVisible: Boolean, animation: Boolean = true) {
+        isScreenLockLayoutVisible = isVisible
+        if (isVisible) {
+            if (animation) {
+                showScreenLockLayoutAnimation(true)
+            } else {
+                screenLockIv.isVisible = true
+                screenLockIv.alpha = 1f
+            }
+        } else {
+            if (animation) {
+                showScreenLockLayoutAnimation(false)
+            } else {
+                screenLockIv.isVisible = false
+            }
+        }
+    }
+
+    private fun setScreenShotLayoutVisible(isVisible: Boolean, animation: Boolean = true) {
+        if (isVisible) {
+            if (animation) {
+                showScreenShotLayoutAnimation(true)
+            } else {
+                screenShotIv.isVisible = true
+                screenShotIv.alpha = 1f
+            }
+        } else {
+            if (animation) {
+                showScreenShotLayoutAnimation(false)
+            } else {
+                screenShotIv.isVisible = false
+            }
+        }
+    }
+
     fun setControllerLayoutVisible(isVisible: Boolean, animation: Boolean = true) {
-        isControllerPanelVisible = isVisible
+        isControllerLayoutVisible = isVisible
         if (isVisible && isSpeedPanelVisible) {
             setSpeedLayoutVisible(isVisible = false, animation = false)
         }
         if (isVisible) {
             if (animation) {
                 showTopLayoutAnimation(true)
-                showCenterLayoutAnimation(true)
                 showBottomLayoutAnimation(true)
             } else {
                 topLayout.isVisible = true
                 topLayout.alpha = 1f
                 topLayout.translationY = 0f
-                centerLayout.isVisible = true
-                centerLayout.alpha = 1f
                 bottomLayout.isVisible = true
                 bottomLayout.alpha = 1f
                 bottomLayout.translationY = 0f
@@ -670,14 +831,13 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         } else {
             if (animation) {
                 showTopLayoutAnimation(false)
-                showCenterLayoutAnimation(false)
                 showBottomLayoutAnimation(false)
             } else {
                 topLayout.isVisible = false
-                centerLayout.isVisible = false
                 bottomLayout.isVisible = false
             }
         }
+        setScreenShotLayoutVisible(isVisible, animation)
     }
 
     private fun postHideControllerPanel() {
@@ -694,6 +854,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         onBackPressedCallback.isEnabled = isVisible
         if (isVisible) {
             setControllerLayoutVisible(isVisible = false, animation = false)
+            setScreenLockLayoutVisible(isVisible = false, animation = false)
             if (animation) {
                 showSpeedLayoutAnimation(true)
             } else {
@@ -756,43 +917,84 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         }
     }
 
-    private fun cancelCenterLayoutAnimationIfNeed() {
-        centerLayoutAnimation?.apply {
+    private fun cancelScreenLockLayoutAnimationIfNeed() {
+        screenLockLayoutAnimation?.apply {
             cancel()
             setListener(null)
-            centerLayoutAnimation = null
+            screenLockLayoutAnimation = null
         }
     }
 
-    private fun showCenterLayoutAnimation(isVisible: Boolean) {
-        cancelCenterLayoutAnimationIfNeed()
+    private fun showScreenLockLayoutAnimation(isVisible: Boolean) {
+        cancelScreenLockLayoutAnimationIfNeed()
         viewScope.launch {
-            centerLayout.awaitPost()
+            screenLockIv.awaitPost()
             val endAlpha = if (isVisible) 1f else 0f
-            centerLayout.animate().apply {
+            screenLockIv.animate().apply {
                 alpha(endAlpha)
                 duration = animationDuration
                 setListener(object : SimpleAnimatorListener() {
                     override fun onAnimationStart(animation: Animator) {
                         if (isVisible) {
-                            centerLayout.isVisible = true
+                            screenLockIv.isVisible = true
                         }
                     }
 
                     override fun onAnimationCancel(animation: Animator) {
                         if (!isVisible) {
-                            centerLayout.isVisible = false
+                            screenLockIv.isVisible = false
                         }
                     }
 
                     override fun onAnimationEnd(animation: Animator) {
                         if (!isVisible) {
-                            centerLayout.isVisible = false
+                            screenLockIv.isVisible = false
                         }
                     }
                 })
                 start()
-                centerLayoutAnimation = this
+                screenLockLayoutAnimation = this
+            }
+        }
+    }
+
+    private fun cancelScreenShotLayoutAnimationIfNeed() {
+        screenShotLayoutAnimation?.apply {
+            cancel()
+            setListener(null)
+            screenShotLayoutAnimation = null
+        }
+    }
+
+    private fun showScreenShotLayoutAnimation(isVisible: Boolean) {
+        cancelScreenLockLayoutAnimationIfNeed()
+        viewScope.launch {
+            screenShotIv.awaitPost()
+            val endAlpha = if (isVisible) 1f else 0f
+            screenShotIv.animate().apply {
+                alpha(endAlpha)
+                duration = animationDuration
+                setListener(object : SimpleAnimatorListener() {
+                    override fun onAnimationStart(animation: Animator) {
+                        if (isVisible) {
+                            screenShotIv.isVisible = true
+                        }
+                    }
+
+                    override fun onAnimationCancel(animation: Animator) {
+                        if (!isVisible) {
+                            screenShotIv.isVisible = false
+                        }
+                    }
+
+                    override fun onAnimationEnd(animation: Animator) {
+                        if (!isVisible) {
+                            screenShotIv.isVisible = false
+                        }
+                    }
+                })
+                start()
+                screenShotLayoutAnimation = this
             }
         }
     }
@@ -922,12 +1124,13 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                 //手指抬起时调整进度
                 if (isDragSeekBar) {
                     isDragSeekBar = false
-                    startAdjustPosition = -1L
                     val position = seekBar.progress.toLong()
                     listeners.forEach {
                         it.onSeekChanged(this, position)
                     }
                 }
+                //重置调整进度初始值
+                startAdjustPosition = -1L
                 //手指抬起时隐藏调整进度面板
                 setAdjustPositionLayoutVisible(false)
                 //手指抬起时隐藏预览帧面板
@@ -946,9 +1149,11 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         cancelTopLayoutAnimationIfNeed()
-        cancelCenterLayoutAnimationIfNeed()
+        cancelScreenLockLayoutAnimationIfNeed()
+        cancelScreenShotLayoutAnimationIfNeed()
         cancelBottomLayoutAnimationIfNeed()
         cancelSpeedLayoutAnimationIfNeed()
+        orientationEventListener.disable()
     }
 
     private fun startFastPlay() {
@@ -975,8 +1180,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
 
         fun onBackClick(controllerView: YiDianVideoControllerView)
 
-        fun onScreenLockChanged(controllerView: YiDianVideoControllerView, isScreenLocked: Boolean)
-
         fun onScreenShotClick(controllerView: YiDianVideoControllerView)
 
         fun onSeekChanged(controllerView: YiDianVideoControllerView, currentPosition: Long)
@@ -990,8 +1193,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         fun onPauseClick(controllerView: YiDianVideoControllerView)
 
         fun onRePlayClick(controllerView: YiDianVideoControllerView)
-
-        fun onFullScreenChangedClick(controllerView: YiDianVideoControllerView, isFullScreen: Boolean)
 
         fun onSpeedChanged(controllerView: YiDianVideoControllerView, speed: Float)
 
@@ -1133,6 +1334,53 @@ class YiDianVideoControllerView @JvmOverloads constructor(
 
     private enum class GestureOperation {
         AdjustPosition, AdjustBrightness, AdjustVolume
+    }
+
+    private fun requestOrientation(orientation: Int) {
+        ActivityUtils.getActivity(context)?.requestedOrientation = orientation
+    }
+
+    private fun setControllerOrientation(orientation: Int) {
+        Log.e("tag", "setControllerOrientation: $orientation")
+        controllerOrientation = orientation
+        fullscreenIv.isSelected = orientation == ORIENTATION_LANDSCAPE
+        updateControllerLayoutPadding()
+    }
+
+    private fun onScreenOrientationChanged(screenOrientation: ScreenOrientation) {
+        if (!DeviceUtils.isAutoRotateOn() || isScreenLocked) {
+            return
+        }
+        Log.e("tag", "onScreenOrientationChanged: $screenOrientation")
+        if (screenOrientation.isPortrait) {
+            setControllerOrientation(ORIENTATION_PORTRAIT)
+            requestOrientation(SCREEN_ORIENTATION_PORTRAIT)
+        } else {
+            setControllerOrientation(ORIENTATION_LANDSCAPE)
+            if (screenOrientation.isTop) {
+                requestOrientation(SCREEN_ORIENTATION_LANDSCAPE)
+            } else {
+                requestOrientation(SCREEN_ORIENTATION_REVERSE_LANDSCAPE)
+            }
+        }
+    }
+
+    private fun onScreenLockedChanged(isLocked: Boolean) {
+        //设置控制面板的显示和隐藏
+        setControllerLayoutVisible(!isLocked)
+        //通知系统栏显示和隐藏
+        notifySystemBarVisibleChanged(!isLocked)
+        if (!isLocked) {
+            //回调一次屏幕方向改变
+            onScreenOrientationChanged(currentScreenOrientation)
+        }
+    }
+
+    private enum class ScreenOrientation(val isTop: Boolean, val isPortrait: Boolean) {
+        TopPortrait(true, true),
+        TopLandscape(true, false),
+        BottomPortrait(false, true),
+        BottomLandscape(false, false),
     }
 
 }

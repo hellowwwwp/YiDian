@@ -10,10 +10,12 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.core.math.MathUtils
 import androidx.fragment.app.FragmentActivity
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
+import com.yidian.player.YiDianApp
 import com.yidian.player.utils.ActivityUtils
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -127,4 +129,8 @@ fun Intent.getIntExtraExt(name: String, defaultValue: Int, minValue: Int, maxVal
 
 fun View.getFragmentActivity(): FragmentActivity? {
     return ActivityUtils.getActivity(context) as? FragmentActivity
+}
+
+fun String.toast(duration: Int = Toast.LENGTH_SHORT) {
+    Toast.makeText(YiDianApp.application, this, duration).show()
 }

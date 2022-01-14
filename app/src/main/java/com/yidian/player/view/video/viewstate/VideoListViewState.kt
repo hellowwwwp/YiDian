@@ -7,5 +7,6 @@ package com.yidian.player.viewstate
  */
 data class VideoListViewState(
     val isLoading: Boolean? = null,
-    val isRefreshing: Boolean? = null
+    val isRefreshing: Boolean? = null,
+    val isScan: Boolean? = null
 )

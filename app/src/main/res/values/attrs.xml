@@ -10,7 +10,7 @@
         </attr>
         <attr name="yvv_progressUpdateInterval" format="integer" />
     </declare-styleable>
-    <declare-styleable name="YiDianControllerView">
+    <declare-styleable name="YiDianVideoControllerView">
         <attr name="ycv_hideControllerPanelInterval" format="integer" />
         <attr name="ycv_fastPlaySpeed" format="enum">
             <enum name="x0.8" value="0" />

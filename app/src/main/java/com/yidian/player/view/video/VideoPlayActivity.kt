@@ -3,6 +3,7 @@ package com.yidian.player.view.video
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.viewModels
 import com.gyf.immersionbar.BarHide
 import com.gyf.immersionbar.ktx.immersionBar
 import com.yidian.player.base.BaseActivity
@@ -10,6 +11,8 @@ import com.yidian.player.base.getIntExtraExt
 import com.yidian.player.base.getParcelableListExtra
 import com.yidian.player.databinding.LayoutVideoPlayActivityBinding
 import com.yidian.player.view.video.model.VideoEntity
+import com.yidian.player.view.video.viewmodel.VideoPlayViewModel
+import com.yidian.player.widget.OnVideoPlayListener
 import com.yidian.player.widget.YiDianVideoView
 
 /**
@@ -17,17 +20,24 @@ import com.yidian.player.widget.YiDianVideoView
  * @email: p.wang@aftership.com
  * @date: 2022/1/10
  */
-class VideoPlayActivity : BaseActivity() {
+class VideoPlayActivity : BaseActivity(), OnVideoPlayListener {
 
     private val viewBinding: LayoutVideoPlayActivityBinding by lazy {
         LayoutVideoPlayActivityBinding.inflate(layoutInflater)
     }
+
+    private val videoPlayViewModel: VideoPlayViewModel by viewModels()
 
     private val videoView: YiDianVideoView
         get() = viewBinding.videoView
 
     override val isCommonBarEnabled: Boolean
         get() = false
+
+    private var currentVideoEntity: VideoEntity? = null
+
+    private var currentPosition: Long = 0
+    private var currentDuration: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,11 +63,30 @@ class VideoPlayActivity : BaseActivity() {
         videoView.trySystemBarVisibleChanged = { isVisible ->
             setSystemBarVisible(isVisible)
         }
+        videoView.addOnVideoPlayListener(this)
         videoView.bindLifecycle(this.lifecycle)
         videoView.setVideoList(videoList, initIndex)
         videoView.startPlay(false)
 
-        test(videoList[initIndex])
+        //test(videoList[initIndex])
+    }
+
+    override fun onProgressChanged(position: Long, duration: Long) {
+        this.currentPosition = position
+        this.currentDuration = duration
+    }
+
+    override fun onVideoSourceChanged(videoEntity: VideoEntity, hasPrevious: Boolean, hasNext: Boolean) {
+        this.currentVideoEntity = videoEntity
+    }
+
+    override fun onPause() {
+        super.onPause()
+        currentVideoEntity?.let {
+            videoPlayViewModel.updateVideoProgress(
+                it.id, currentPosition, currentDuration
+            )
+        }
     }
 
     private fun test(videoEntity: VideoEntity) {
@@ -99,6 +128,11 @@ class VideoPlayActivity : BaseActivity() {
 //
 //        mediaCodec.getInputBuffer()
 //        mediaCodec.getInputBuffers()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        videoView.removeOnVideoPlayListener(this)
     }
 
     companion object {

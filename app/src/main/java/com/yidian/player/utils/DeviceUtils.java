@@ -1,6 +1,7 @@
 package com.yidian.player.utils;
 
 import android.content.Context;
+import android.provider.Settings;
 
 import com.yidian.player.YiDianApp;
 
@@ -12,9 +13,6 @@ import androidx.annotation.NonNull;
  * @date: 2022/1/11
  */
 public class DeviceUtils {
-
-    private static int screenStatusBarHeight;
-    private static int navigationBarHeight;
 
     @NonNull
     public static Context getAppContext() {
@@ -48,6 +46,19 @@ public class DeviceUtils {
             return context.getResources().getDimensionPixelSize(identifier);
         }
         return 0;
+    }
+
+    /**
+     * 系统是否允许自动旋转屏幕
+     */
+    public static boolean isAutoRotateOn() {
+        try {
+            final Context context = getAppContext();
+            return Settings.System.getInt(context.getContentResolver(), Settings.System.ACCELEROMETER_ROTATION) == 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
 }

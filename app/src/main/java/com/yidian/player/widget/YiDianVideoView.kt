@@ -59,7 +59,7 @@ class YiDianVideoView @JvmOverloads constructor(
     private val textureView: TextureView
         get() = viewBinding.textureView
 
-    private val controllerView: YiDianVideoControllerView
+    val controllerView: YiDianVideoControllerView
         get() = viewBinding.controllerView
 
     private var textureViewRotation: Int = 0
@@ -106,13 +106,6 @@ class YiDianVideoView @JvmOverloads constructor(
             }
         }
 
-        override fun onScreenLockChanged(
-            controllerView: YiDianVideoControllerView,
-            isScreenLocked: Boolean
-        ) {
-            //TODO
-        }
-
         override fun onScreenShotClick(controllerView: YiDianVideoControllerView) {
             //TODO
         }
@@ -139,13 +132,6 @@ class YiDianVideoView @JvmOverloads constructor(
 
         override fun onRePlayClick(controllerView: YiDianVideoControllerView) {
             startPlay(true)
-        }
-
-        override fun onFullScreenChangedClick(
-            controllerView: YiDianVideoControllerView,
-            isFullScreen: Boolean
-        ) {
-            //TODO
         }
 
         override fun onSpeedChanged(controllerView: YiDianVideoControllerView, speed: Float) {
@@ -235,9 +221,10 @@ class YiDianVideoView @JvmOverloads constructor(
                 )
             )
         }
+        val progress = videoList[initIndex].progress
         player.setMediaSource(concatMediaSource)
         player.prepare()
-        player.seekTo(initIndex, 0)
+        player.seekTo(initIndex, progress)
     }
 
     override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -430,10 +417,16 @@ enum class PlayState {
 
 interface OnVideoPlayListener {
 
-    fun onPlayStateChanged(oldState: PlayState, newState: PlayState)
+    fun onPlayStateChanged(oldState: PlayState, newState: PlayState) {
 
-    fun onProgressChanged(position: Long, duration: Long)
+    }
 
-    fun onVideoSourceChanged(videoEntity: VideoEntity, hasPrevious: Boolean, hasNext: Boolean)
+    fun onProgressChanged(position: Long, duration: Long) {
+
+    }
+
+    fun onVideoSourceChanged(videoEntity: VideoEntity, hasPrevious: Boolean, hasNext: Boolean) {
+
+    }
 
 }

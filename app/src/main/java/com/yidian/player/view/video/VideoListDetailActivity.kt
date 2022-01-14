@@ -62,6 +62,7 @@ class VideoListDetailActivity : BaseActivity() {
     }
 
     private fun initData() {
+        lifecycle.addObserver(videoListDetailViewModel)
         videoListDetailViewModel.videoListDetailLiveData.observe(this) {
             videoListDetailAdapter.submitList(it)
         }
@@ -69,7 +70,8 @@ class VideoListDetailActivity : BaseActivity() {
     }
 
     private fun onVideoItemClick(position: Int, videoEntity: VideoEntity) {
-        VideoPlayActivity.start(this, videoListItem.videoList, position)
+        val videoList = videoListDetailViewModel.getVideoList()
+        VideoPlayActivity.start(this, videoList, position)
     }
 
     private fun onVideoItemLongClick(position: Int, videoEntity: VideoEntity) {

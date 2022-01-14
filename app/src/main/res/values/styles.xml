@@ -22,4 +22,9 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="ToolbarPopupTheme" parent="@style/Widget.AppCompat.Light.PopupMenu.Overflow">
+        <!--把该属性改为false即可使menu位置位于toolbar之下-->
+        <item name="overlapAnchor">false</item>
+    </style>
+
 </resources>

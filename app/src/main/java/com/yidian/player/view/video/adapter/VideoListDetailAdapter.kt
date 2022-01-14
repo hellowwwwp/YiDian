@@ -2,6 +2,7 @@ package com.yidian.player.view.video.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isInvisible
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.blankj.utilcode.util.SizeUtils
@@ -61,6 +62,9 @@ class VideoListDetailAdapter : ListAdapter<VideoEntity, VideoListDetailAdapter.V
             nameTv.text = item.fileName
             sizeTv.text = item.sizeStr
             durationTv.text = item.durationStr
+            progressPb.max = item.duration.toInt()
+            progressPb.progress = item.progress.toInt()
+            progressPb.isInvisible = item.progress <= 0
         }
     }
 

@@ -5,12 +5,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.Settings
+import android.view.Menu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.yidian.player.R
 import com.yidian.player.base.BaseActivity
 import com.yidian.player.databinding.LayoutVideoListActivityBinding
 import com.yidian.player.view.video.adapter.VideoListAdapter
@@ -32,20 +36,16 @@ class VideoListActivity : BaseActivity() {
     }
 
     private val storagePermission: String by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            //android 11 以上 读权限 + 管理所有文件权限
             Manifest.permission.READ_EXTERNAL_STORAGE
         } else {
+            //android 10 以下 读写权限
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
     }
 
     private val requestPermission = ActivityResultContracts.RequestPermission()
-
-    /**
-     * 判断是否授予了存储权限
-     */
-    private val isStoragePermissionGranted: Boolean
-        get() = requestPermission.getSynchronousResult(this, storagePermission)?.value ?: false
 
     /**
      * 权限申请
@@ -56,10 +56,22 @@ class VideoListActivity : BaseActivity() {
             initData()
         } else {
             //权限被拒绝
-            val showRationale = shouldShowRequestPermissionRationale(
-                storagePermission
-            )
-            showStoragePermissionRationaleDialog(showRationale)
+            val shouldShowRationale = shouldShowRequestPermissionRationale(storagePermission)
+            showStoragePermissionRationaleDialog(shouldShowRationale)
+        }
+    }
+
+    /**
+     * 扫描的管理所有文件权限
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    private val scanPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (Environment.isExternalStorageManager()) {
+            //权限被授予
+            onScanClick()
+        } else {
+            //权限被拒绝
+            showScanPermissionRationaleDialog()
         }
     }
 
@@ -68,7 +80,7 @@ class VideoListActivity : BaseActivity() {
      */
     private val startAppDetailsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         //检查权限
-        if (isStoragePermissionGranted) {
+        if (hasStoragePermissionGranted()) {
             //权限被授予
             initData()
         } else {
@@ -83,7 +95,7 @@ class VideoListActivity : BaseActivity() {
         initView()
         bindData()
         //检查权限
-        if (isStoragePermissionGranted) {
+        if (hasStoragePermissionGranted()) {
             //权限被授予
             initData()
         } else {
@@ -96,6 +108,12 @@ class VideoListActivity : BaseActivity() {
         with(viewBinding.toolbar) {
             title = "本地视频"
             setSupportActionBar(this)
+            setOnMenuItemClickListener { menuItem ->
+                when (menuItem.itemId) {
+                    R.id.action_scan -> onScanClick()
+                }
+                return@setOnMenuItemClickListener true
+            }
         }
         with(viewBinding.refreshLayout) {
             setOnRefreshListener {
@@ -107,6 +125,12 @@ class VideoListActivity : BaseActivity() {
             itemAnimator = null
             adapter = videoListAdapter
         }
+        setScanProgressVisible(false)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.video_list_menus, menu)
+        return true
     }
 
     private fun bindData() {
@@ -118,6 +142,9 @@ class VideoListActivity : BaseActivity() {
             if (state.isRefreshing == false) {
                 finishRefresh()
             }
+            state.isScan?.let {
+                setScanProgressVisible(it)
+            }
         })
         videoListViewModel.videoListLiveData.observe(this, { data ->
             videoListAdapter.submitList(data)
@@ -128,9 +155,13 @@ class VideoListActivity : BaseActivity() {
         videoListViewModel.initVideoList()
     }
 
-    private fun showStoragePermissionRationaleDialog(isRationale: Boolean) {
-        val message = if (isRationale) {
-            "请前往应用设置页授予权限."
+    private fun hasStoragePermissionGranted(): Boolean {
+        return requestPermission.getSynchronousResult(this, storagePermission)?.value ?: false
+    }
+
+    private fun showStoragePermissionRationaleDialog(shouldShowRationale: Boolean) {
+        val message = if (shouldShowRationale) {
+            "没有权限无法加载本地视频哦~"
         } else {
             "没有权限真就运行不下去了呀~"
         }
@@ -139,11 +170,15 @@ class VideoListActivity : BaseActivity() {
             setMessage(message)
             setCancelable(false)
             setPositiveButton("去授权") { _, _ ->
-                val intent = Intent(
-                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.fromParts("package", packageName, null)
-                )
-                startAppDetailsLauncher.launch(intent)
+                if (shouldShowRationale) {
+                    storagePermissionLauncher.launch(storagePermission)
+                } else {
+                    val intent = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", packageName, null)
+                    )
+                    startAppDetailsLauncher.launch(intent)
+                }
             }
             setNegativeButton("取消") { _, _ ->
                 finish()
@@ -164,4 +199,44 @@ class VideoListActivity : BaseActivity() {
     private fun onVideoListItemClick(position: Int, videoListItemEntity: VideoListItemEntity) {
         VideoListDetailActivity.start(this, videoListItemEntity)
     }
+
+    private fun onScanClick() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                videoListViewModel.scanVideoFiles()
+            } else {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.fromParts("package", packageName, null)
+                )
+                scanPermissionLauncher.launch(intent)
+            }
+        } else {
+            videoListViewModel.scanVideoFiles()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun showScanPermissionRationaleDialog() {
+        AlertDialog.Builder(this).apply {
+            setTitle("权限说明")
+            setMessage("全盘扫描功能需要管理权限哦~")
+            setCancelable(false)
+            setPositiveButton("去授权") { _, _ ->
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.fromParts("package", packageName, null)
+                )
+                scanPermissionLauncher.launch(intent)
+            }
+            setNegativeButton("取消") { _, _ ->
+                //on op
+            }
+        }.show()
+    }
+
+    private fun setScanProgressVisible(isVisible: Boolean) {
+        viewBinding.scanPb.isVisible = isVisible
+    }
+
 }

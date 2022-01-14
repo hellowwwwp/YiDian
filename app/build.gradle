@@ -38,8 +38,8 @@ android {
         viewBinding true
     }
 
-    sourceSets{
-        main{
+    sourceSets {
+        main {
             jniLibs.srcDir(['libs'])
         }
     }
@@ -47,6 +47,13 @@ android {
     repositories {
         flatDir {
             dirs 'libs'
+        }
+    }
+
+    kapt {
+        //room exportSchema with kotlin
+        arguments {
+            arg("room.schemaLocation", "$projectDir/schemas")
         }
     }
 }

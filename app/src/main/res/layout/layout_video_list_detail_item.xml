@@ -33,11 +33,21 @@
             android:paddingStart="8dp"
             android:paddingTop="4dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="4dp"
+            android:paddingBottom="8dp"
             android:singleLine="true"
             android:textColor="@color/foreground_reverse_primary"
             android:textSize="11dp"
             tools:text="00:00" />
+
+        <ProgressBar
+            android:id="@+id/progress_pb"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_gravity="bottom"
+            android:progressDrawable="@drawable/video_progress_horizontal_drawable"
+            tools:max="100"
+            tools:progress="20" />
 
     </FrameLayout>
 
