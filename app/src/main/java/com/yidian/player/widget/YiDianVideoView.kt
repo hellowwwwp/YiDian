@@ -1,8 +1,6 @@
 package com.yidian.player.widget
 
 import android.content.Context
-import android.graphics.Matrix
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.TextureView
 import android.view.View
@@ -23,6 +21,7 @@ import com.yidian.player.R
 import com.yidian.player.base.getFragmentActivity
 import com.yidian.player.base.layoutInflater
 import com.yidian.player.databinding.LayoutVideoViewBinding
+import com.yidian.player.utils.VideoUtils
 import com.yidian.player.view.video.model.VideoEntity
 
 /**
@@ -321,26 +320,18 @@ class YiDianVideoView @JvmOverloads constructor(
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
-        updateAspectRatio()
+        updateAspectRatio(videoSize)
     }
 
     /** textureView.addOnLayoutChangeListener(this) **/
     override fun onLayoutChange(
-        view: View,
-        left: Int,
-        top: Int,
-        right: Int,
-        bottom: Int,
-        oldLeft: Int,
-        oldTop: Int,
-        oldRight: Int,
-        oldBottom: Int
+        view: View, left: Int, top: Int, right: Int, bottom: Int,
+        oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int
     ) {
-        applyTextureViewRotation(textureView, textureViewRotation)
+        VideoUtils.applyTextureViewRotation(textureView, textureViewRotation)
     }
 
-    private fun updateAspectRatio() {
-        val videoSize = player.videoSize
+    private fun updateAspectRatio(videoSize: VideoSize) {
         val unAppliedRotationDegrees = videoSize.unappliedRotationDegrees
         var videoAspectRatio = if (videoSize.width == 0 || videoSize.height == 0) {
             0f
@@ -362,7 +353,7 @@ class YiDianVideoView @JvmOverloads constructor(
             // So add an OnLayoutChangeListener to apply rotation after layout step.
             textureView.addOnLayoutChangeListener(this)
         }
-        applyTextureViewRotation(textureView, textureViewRotation)
+        VideoUtils.applyTextureViewRotation(textureView, textureViewRotation)
         contentFrame.setAspectRatio(videoAspectRatio)
     }
 
@@ -372,30 +363,6 @@ class YiDianVideoView @JvmOverloads constructor(
         controllerView.removeOnControllerListener(controllerListener)
         controllerView.unbindVideoView(this)
         release()
-    }
-
-    /** Applies a texture rotation to a {@link TextureView}. */
-    private fun applyTextureViewRotation(textureView: TextureView, textureViewRotation: Int) {
-        val transformMatrix = Matrix()
-        val textureViewWidth = textureView.width.toFloat()
-        val textureViewHeight = textureView.height.toFloat()
-        if (textureViewWidth != 0f && textureViewHeight != 0f && textureViewRotation != 0) {
-            val pivotX = textureViewWidth / 2
-            val pivotY = textureViewHeight / 2
-            transformMatrix.postRotate(textureViewRotation.toFloat(), pivotX, pivotY)
-
-            // After rotation, scale the rotated texture to fit the TextureView size.
-            val originalTextureRect = RectF(0f, 0f, textureViewWidth, textureViewHeight)
-            val rotatedTextureRect = RectF()
-            transformMatrix.mapRect(rotatedTextureRect, originalTextureRect)
-            transformMatrix.postScale(
-                textureViewWidth / rotatedTextureRect.width(),
-                textureViewHeight / rotatedTextureRect.height(),
-                pivotX,
-                pivotY
-            )
-        }
-        textureView.setTransform(transformMatrix)
     }
 }
 

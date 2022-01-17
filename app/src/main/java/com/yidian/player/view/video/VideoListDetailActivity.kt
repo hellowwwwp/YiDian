@@ -87,6 +87,8 @@ class VideoListDetailActivity : BaseActivity() {
                 dialog.dismiss()
             }
         }.show()
+//        val videoList = videoListDetailViewModel.getVideoList()
+//        TestVideoActivity.start(this, videoList, position)
     }
 
     private fun onDeleteResult(result: ActivityResult) {

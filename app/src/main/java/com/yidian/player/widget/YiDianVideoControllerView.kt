@@ -106,14 +106,8 @@ class YiDianVideoControllerView @JvmOverloads constructor(
     private val adjustPositionPb: ProgressBar
         get() = viewBinding.adjustPositionPb
 
-    private val thumbnailLayout: View
-        get() = viewBinding.thumbnailLayout
-
-    private val thumbnailIv: ImageView
-        get() = viewBinding.thumbnailIv
-
-    private val thumbnailTv: TextView
-        get() = viewBinding.thumbnailTv
+    private val previewView: SimpleVideoPreviewView
+        get() = viewBinding.previewView
 
     private val fullscreenIv: ImageView
         get() = viewBinding.fullscreenIv
@@ -339,6 +333,7 @@ class YiDianVideoControllerView @JvmOverloads constructor(
             titleTv.text = videoEntity.fileName
             currentDuration = videoEntity.duration
             setPreviousAndNext(hasPrevious, hasNext)
+            previewView.setDataSource(videoEntity.uri)
         }
     }
 
@@ -423,7 +418,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         setAdjustBrightnessLayoutVisible(false)
         setAdjustVolumeLayoutVisible(false)
         setAdjustPositionLayoutVisible(false)
-        setThumbnailLayoutVisible(false)
         registerOnBackPressedCallback()
         orientationEventListener.enable()
     }
@@ -433,11 +427,19 @@ class YiDianVideoControllerView @JvmOverloads constructor(
             setOnSeekBarChangeListener(object : AbsSeekBarChangeListener() {
                 override fun onStartTrackingTouch(seekBar: SeekBar) {
                     isDragSeekBar = true
+                    previewView.start()
+                    previewView.isVisible = true
+                }
+
+                override fun onStopTrackingTouch(seekBar: SeekBar) {
+                    previewView.stop()
+                    previewView.isInvisible = true
                 }
 
                 override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                     if (fromUser) {
                         currentPosition = progress.toLong()
+                        previewView.seekTo(progress.toLong())
                     }
                 }
             })
@@ -1133,8 +1135,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
                 startAdjustPosition = -1L
                 //手指抬起时隐藏调整进度面板
                 setAdjustPositionLayoutVisible(false)
-                //手指抬起时隐藏预览帧面板
-                setThumbnailLayoutVisible(false)
             }
         }
         return super.dispatchTouchEvent(ev)
@@ -1305,10 +1305,6 @@ class YiDianVideoControllerView @JvmOverloads constructor(
         } else {
             value
         }
-    }
-
-    private fun setThumbnailLayoutVisible(isVisible: Boolean) {
-        thumbnailLayout.isVisible = isVisible
     }
 
     /**

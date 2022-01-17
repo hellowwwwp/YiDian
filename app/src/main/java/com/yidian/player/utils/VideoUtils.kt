@@ -2,8 +2,11 @@ package com.yidian.player.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.view.TextureView
 import androidx.annotation.WorkerThread
 import com.yidian.player.YiDianApp
 import java.io.File
@@ -126,6 +129,29 @@ object VideoUtils {
         val extraMinutes = seconds % 3600 / 60
         val extraExtraSeconds = seconds % 60
         return String.format("%02d:%02d:%02d", hours, extraMinutes, extraExtraSeconds)
+    }
+
+    fun applyTextureViewRotation(textureView: TextureView, textureViewRotation: Int) {
+        val transformMatrix = Matrix()
+        val textureViewWidth = textureView.width.toFloat()
+        val textureViewHeight = textureView.height.toFloat()
+        if (textureViewWidth != 0f && textureViewHeight != 0f && textureViewRotation != 0) {
+            val pivotX = textureViewWidth / 2
+            val pivotY = textureViewHeight / 2
+            transformMatrix.postRotate(textureViewRotation.toFloat(), pivotX, pivotY)
+
+            // After rotation, scale the rotated texture to fit the TextureView size.
+            val originalTextureRect = RectF(0f, 0f, textureViewWidth, textureViewHeight)
+            val rotatedTextureRect = RectF()
+            transformMatrix.mapRect(rotatedTextureRect, originalTextureRect)
+            transformMatrix.postScale(
+                textureViewWidth / rotatedTextureRect.width(),
+                textureViewHeight / rotatedTextureRect.height(),
+                pivotX,
+                pivotY
+            )
+        }
+        textureView.setTransform(transformMatrix)
     }
 
 }

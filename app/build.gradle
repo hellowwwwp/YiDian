@@ -121,12 +121,6 @@ dependencies {
     def exoplayerVersion = '2.16.1'
     implementation "com.google.android.exoplayer:exoplayer-core:$exoplayerVersion"
     implementation "com.google.android.exoplayer:exoplayer-ui:$exoplayerVersion"
-
     //ffmpeg 软解扩展
     implementation(name: 'exoplayer-extension-ffmpeg-release', ext: 'aar')
-
-    //implementation 'com.arthenica:ffmpeg-kit-full:4.5.1.LTS'
-
-    implementation 'com.github.wseemann:FFmpegMediaMetadataRetriever-core:1.0.16'
-    implementation 'com.github.wseemann:FFmpegMediaMetadataRetriever-native-arm64-v8a:1.0.16'
 }

@@ -67,8 +67,6 @@ class VideoPlayActivity : BaseActivity(), OnVideoPlayListener {
         videoView.bindLifecycle(this.lifecycle)
         videoView.setVideoList(videoList, initIndex)
         videoView.startPlay(false)
-
-        //test(videoList[initIndex])
     }
 
     override fun onProgressChanged(position: Long, duration: Long) {
@@ -87,47 +85,6 @@ class VideoPlayActivity : BaseActivity(), OnVideoPlayListener {
                 it.id, currentPosition, currentDuration
             )
         }
-    }
-
-    private fun test(videoEntity: VideoEntity) {
-//        val extractor = MediaExtractor()
-//        extractor.setDataSource(this, videoEntity.uri, null)
-//        val trackCount = extractor.trackCount
-//        var mediaFormat: MediaFormat? = null
-//        var mimeType: String? = null
-//        for (index in (0 until trackCount)) {
-//            val format = extractor.getTrackFormat(index)
-//            val mime = format.getString(MediaFormat.KEY_MIME)
-//            Log.e("tag", "mime: $mime, track: $index")
-//            if (mime?.startsWith("video/") == true) {
-//                mediaFormat = format
-//                mimeType = mime
-//                extractor.selectTrack(index)
-//                break
-//            }
-//        }
-//        if (mediaFormat == null || mimeType.isNullOrEmpty()) {
-//            Log.e("tag", "没有发现视频轨道")
-//            return
-//        }
-//        //获取视频的元数据
-//        val width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-//        val height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
-//        val duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
-//
-//        //缩放分辨率
-//        val fixedWidth = (width / 10f).toInt()
-//        val fixedHeight = (height / 10f).toInt()
-//        mediaFormat.setInteger(MediaFormat.KEY_WIDTH, fixedWidth)
-//        mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, fixedHeight)
-//
-//        val textureView = viewBinding.previewSurface
-//        val mediaCodec = MediaCodec.createDecoderByType(mimeType)
-//        mediaCodec.configure(mediaFormat, null, null, 0)
-//        mediaCodec.start()
-//
-//        mediaCodec.getInputBuffer()
-//        mediaCodec.getInputBuffers()
     }
 
     override fun onDestroy() {

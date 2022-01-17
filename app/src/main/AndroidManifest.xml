@@ -20,7 +20,8 @@
         <!-- 适配华为（huawei）刘海屏 -->
         <meta-data
             android:name="android.notch_support"
-            android:value="true" /> <!-- 适配小米（xiaomi）刘海屏 -->
+            android:value="true" />
+        <!-- 适配小米（xiaomi）刘海屏 -->
         <meta-data
             android:name="notch.config"
             android:value="portrait|landscape" />
@@ -46,6 +47,10 @@
             android:screenOrientation="portrait" />
         <activity
             android:name=".view.video.VideoPlayActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="false" />
+        <activity
+            android:name=".view.video.TestVideoActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="false" />
     </application>

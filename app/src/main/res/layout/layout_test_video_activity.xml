@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_normal_primary">
+
+    <com.google.android.exoplayer2.ui.AspectRatioFrameLayout
+        android:id="@+id/content_frame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true">
+
+        <TextureView
+            android:id="@+id/texture_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
+    </com.google.android.exoplayer2.ui.AspectRatioFrameLayout>
+
+    <com.yidian.player.widget.SimpleVideoPreviewView
+        android:id="@+id/video_preview"
+        android:layout_width="150dp"
+        android:layout_height="110dp"
+        android:layout_above="@+id/seek_bar"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="30dp"
+        android:background="@color/background_reverse_primary"
+        android:visibility="visible" />
+
+    <SeekBar
+        android:id="@+id/seek_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="50dp"
+        android:maxHeight="4dp"
+        android:progressDrawable="@drawable/video_horizontal_drawable"
+        tools:max="100"
+        tools:progress="30" />
+
+</RelativeLayout>

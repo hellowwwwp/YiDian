@@ -86,8 +86,17 @@
         android:layout_alignParentBottom="true"
         android:background="@drawable/video_controller_bottom_shape"
         android:orientation="vertical"
-        android:paddingTop="80dp"
+        android:paddingTop="0dp"
         android:paddingBottom="10dp">
+
+        <com.yidian.player.widget.SimpleVideoPreviewView
+            android:id="@+id/preview_view"
+            android:layout_width="120dp"
+            android:layout_height="80dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="20dp"
+            android:background="@color/background_reverse_primary"
+            android:visibility="invisible" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -432,36 +441,5 @@
             tools:progress="50" />
 
     </RelativeLayout>
-
-    <LinearLayout
-        android:id="@+id/thumbnail_layout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="150dp"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <ImageView
-            android:id="@+id/thumbnail_iv"
-            android:layout_width="150dp"
-            android:layout_height="112dp"
-            android:layout_gravity="center"
-            android:contentDescription="@null"
-            android:scaleType="fitCenter"
-            tools:background="@color/main_secondary" />
-
-        <TextView
-            android:id="@+id/thumbnail_tv"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal|bottom"
-            android:layout_marginTop="4dp"
-            android:singleLine="true"
-            android:text="00:00"
-            android:textColor="@color/foreground_reverse_primary"
-            android:textSize="12dp" />
-
-    </LinearLayout>
 
 </merge>
